@@ -1,8 +1,10 @@
-import torch.empty, math
-
+import math
 from torch import empty
 
+torch.set_grad_enabled(False)
+
 class Module(object):
+    
     def __init__(self):
         self.parameters = [] #Initializing the parameters
         
@@ -17,6 +19,7 @@ class Module(object):
         a tensor or a tuple of tensors.
         '''
         raise NotImplementedError
+        
     def backward(self, *gradwrtoutput):
         '''
         Input
@@ -30,6 +33,7 @@ class Module(object):
         of the loss w.r.t. the module’s input.
         '''
         raise NotImplementedError
+        
     def param(self):
         '''    
         Output
@@ -41,7 +45,37 @@ class Module(object):
         return []
 
 class Linear(Module):
+    # Fully connected layer module
+    
     def __init__(self, in_size, out_size):
         self.w = torch.rand(in_size, out_size)
         self.b = torch.rand(out_size, 1)
         
+
+
+class LossMSE(Module):
+    # LossMSE module
+    
+    def forward(self, v, t):
+        # Computes the MSE loss of v and target t
+        
+        self.v = v
+        self.t = t
+        return torch.mean((v-t).pow(2))
+    
+    def backward(self, v, t):
+        # Computes the MSE loss gradient w.r.t. v
+        
+        return 2*(self.v-self.t)/v.numel()    
+    
+    
+        
+def generate_data():
+    # Generates uniformly distributed data points in [0,1]^2, each with a label 0 if outside the disk of center (0.5, 0.5) and radius 1/sqrt(2*pi), and 1 inside
+    
+    train_input = torch.rand(1000, 2)
+    test_input = torch.rand(1000, 2)
+    train_target = ((train_input[:,0]-0.5)**2 + (train_input[:,1]-0.5)**2) <= 1/(2*math.pi)
+    test_target = ((test_input[:,0]-0.5)**2 + (test_input[:,1]-0.5)**2) <= 1/(2*math.pi)
+    
+    return train_input, train_target, test_input, test_target
