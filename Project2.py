@@ -1,7 +1,7 @@
 import math
-from torch import empty
+from torch import empty, set_grad_enabled
 
-torch.set_grad_enabled(False)
+set_grad_enabled(False)
 
 class Module(object):
     
@@ -79,3 +79,26 @@ def generate_data():
     test_target = ((test_input[:,0]-0.5)**2 + (test_input[:,1]-0.5)**2) <= 1/(2*math.pi)
     
     return train_input, train_target, test_input, test_target
+
+
+class ReLU(Module):
+    
+    def forward(self, s):
+        self.s = s
+        s[s>0] = 0
+        return s
+
+    def backward(self, dl_dx):
+        dl_ds = dl_dx*(self.s>0)
+        return dl_ds
+    
+class Tanh(Module):
+    
+    def forward(self, s):
+        self.s = s
+        return (1-math.exp(-2*s))/(1+math.exp(-2*s))
+
+    def backward(self, dl_dx):
+        d_tanh = 1-((1-math.exp(-2*self.s))/(1+math.exp(-2*self.s)))^2
+        dl_ds = dl_dx*d-tanh
+        return dl_ds
