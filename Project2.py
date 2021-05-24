@@ -4,7 +4,7 @@ import math, torch
 torch.set_grad_enabled(False)
 
 class Module(object):
-    
+   
     def __init__(self):
         self.param = [] #Initializing the parameters
         
@@ -52,20 +52,19 @@ class Parameters(object):
     def get_tuple(self):
         return self.value, self.gradient
 
-
 class Linear(Module):
     # Fully connected layer module   
     def __init__(self, in_features, out_features):
-        super.__init__()
-        self.in_features = in_features
-        self.out_features = out_features
+        super().__init__()
         self.w = Parameters(in_features, out_features)
         self.b = Parameters(out_features)
+        self.in_features = in_features
+        self.out_features = out_features
         self.param = [self.w, self.b]
         
     def forward(self, inputt):
         self.inputt = inputt    #Saving for backprop
-        return torch.mm(self.w, self.inputt) + self.b
+        return self.inputt @ self.w.value + self.b.value#torch.mm(self.w, self.inputt) + self.b
     
     def backward(self, dl_ds):
         self.w.gradient = torch.mm(dl_ds,torch.transpose(self.x,0,1))
@@ -76,24 +75,22 @@ class Linear(Module):
         return [(self.w,self.w.gradient), (self.b,self.w.gradient)]
 
 
-class LossMSE(Module):
+class LossMSE(object):
     # LossMSE module
-    def forward(self, v, t):
+    def loss(self, v, t):
         # Computes the MSE loss of v and target t
-        self.v = v
-        self.t = t
         return torch.mean((v-t).pow(2))
     
-    def backward(self, v, t):
+    def gradient(self, v, t):
         # Computes the MSE loss gradient w.r.t. v
-        return 2*(self.v-self.t)/v.numel()    
+        return 2*(v-t)/v.numel()   
 
 
 #Activation functions
 
 class ReLU(Module):
     def __init__(self, *size):
-        super.__init__()
+        super().__init__()
         
         self.inputt = torch.empty(size)
         self.output = torch.empty(size)
@@ -110,14 +107,15 @@ class ReLU(Module):
     
 class Tanh(Module):
     def __init__(self, *size):
-        super.__init__()
+        super().__init__()
         self.inputt = torch.empty(size)
         self.output = torch.empty(size)
         self.param = []
         
     def forward(self, s):
         self.s = s
-        return (1-math.exp(-2*s))/(1+math.exp(-2*s))
+        self.output = [math.tanh(x) for x in self.s]
+        return torch.Tensor(self.output)
 
     def backward(self, dl_dx):
         d_tanh = 1-((1-math.exp(-2*self.s))/(1+math.exp(-2*self.s)))^2
@@ -127,7 +125,7 @@ class Tanh(Module):
     
 #Sequential
 class Sequential(Module):
-    def __init__(self, structure):
+    def __init__(self, *structure):
         super().__init__()
         self.param = []
         self.structure = structure
@@ -154,9 +152,9 @@ class SGD():
         self.param = param
         self.eta = eta
         self.gamma = gamma
-        self.wt = []
-        for i in self.param:
-            self.wt.append(i.gradient.clone())
+        #self.wt = []
+        #for i in self.param:
+            #self.wt.append(i.gradient.clone())
 
     def step(self):
         for i in range(len(self.param)):
