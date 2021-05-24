@@ -6,13 +6,13 @@ torch.set_grad_enabled(False)
 class Module(object):
     
     def __init__(self):
-        self.parameters = [] #Initializing the parameters
+        self.param = [] #Initializing the parameters
         
-    def forward(self, *input):
+    def forward(self, *inputt):
         '''
         Input
         -----
-        *input : a tensor or a tuple of tensors.
+        *inputt : a tensor or a tuple of tensors.
             
         Output
         ------
@@ -44,69 +44,77 @@ class Module(object):
         '''
         return []
 
-    
-# Fully connected layer module    
+class Parameters(object):
+    # Class defining the parameters used in the neural network and their gradient
+    def __init__(self, *size):
+        self.value = torch.empty(size).normal_(0,1)
+        self.gradient = torch.empty(size).fill_(0)
+    def get_tuple(self):
+        return self.value, self.gradient
+
 
 class Linear(Module):
-    
-    def __init__(self, in_features, out_features, gamma = 1e-3):
-        self.gamma = gamma
-        self.w = torch.rand(in_features, out_features)
-        self.b = torch.rand(out_features, 1)
+    # Fully connected layer module   
+    def __init__(self, in_features, out_features):
+        super.__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.w = Parameters(in_features, out_features)
+        self.b = Parameters(out_features)
+        self.param = [self.w, self.b]
         
-    def forward(self, x):
-        self.x = x    #Saving for backprop
-        return torch.mm(self.w,x) + self.b
+    def forward(self, inputt):
+        self.inputt = inputt    #Saving for backprop
+        return torch.mm(self.w, self.inputt) + self.b
     
     def backward(self, dl_ds):
-        #Derivative of the loss w.r.t. the parameters
-        self.dl_dw = torch.mm(dl_ds,self.x.T)
-        self.dl_db = dl_ds
-        self.dl_dx = torch.mm(self.w.T,dl_ds)
-        
-        #Parameters update with SGD
-        self.w =- self.gamma*dl_dw
-        self.b =- self.gamma*dl_db
-        
-        return dl_dx
+        self.w.gradient = torch.mm(dl_ds,torch.transpose(self.x,0,1))
+        self.b.gradient = dl_ds
+        return torch.mm(torch.transpose(self.w,0,1), dl_ds)
     
     def param(self):
-        return [(self.w,self.dl_dw), (self.b,self.dl_db)]
-    
-    
-#Loss function
+        return [(self.w,self.w.gradient), (self.b,self.w.gradient)]
+
 
 class LossMSE(Module):
     # LossMSE module
-    
     def forward(self, v, t):
         # Computes the MSE loss of v and target t
-        
         self.v = v
         self.t = t
         return torch.mean((v-t).pow(2))
     
     def backward(self, v, t):
         # Computes the MSE loss gradient w.r.t. v
-        
         return 2*(self.v-self.t)/v.numel()    
 
 
 #Activation functions
 
 class ReLU(Module):
-
+    def __init__(self, *size):
+        super.__init__()
+        
+        self.inputt = torch.empty(size)
+        self.output = torch.empty(size)
+        self.param = []
+        
     def forward(self, s):
         self.s = s
         s[s>0] = 0
         return s
-
+    
     def backward(self, dl_dx):
         dl_ds = dl_dx*(self.s>0)
         return dl_ds
     
 class Tanh(Module):
-    
+    def __init__(self, *size):
+        super.__init__()
+        self.inputt = torch.empty(size)
+        self.output = torch.empty(size)
+        self.param = []
+        
     def forward(self, s):
         self.s = s
         return (1-math.exp(-2*s))/(1+math.exp(-2*s))
@@ -118,9 +126,10 @@ class Tanh(Module):
 
     
 #Sequential
-
-class sequential:
-    def __init__(structure):
+class Sequential(Module):
+    def __init__(self, structure):
+        super().__init__()
+        self.param = []
         self.structure = structure
         
     def forward(self, x):
@@ -136,7 +145,26 @@ class sequential:
         for layer in self.structure:
             for parameter in layer.param():
                 parameters.append(parameter)
-            
+
+class SGD():
+    # ...
+    def __init__(self, param, eta, gamma = 0.5):
+        if eta < 0.:
+            raise ValueError(f"Method not implemented for $\eta$ < 0")
+        self.param = param
+        self.eta = eta
+        self.gamma = gamma
+        self.wt = []
+        for i in self.param:
+            self.wt.append(i.gradient.clone())
+
+    def step(self):
+        for i in range(len(self.param)):
+            #Rumelhart et al . 1986
+            ut[i] = self.gamma * self.ut[i] + self.eta * self.param[i].gradient
+            self.param[i].value = self.wt[i] - ut[i]
+            self.param[i].gradient[:].fill_(0)
+
 # Generation of data            
 
 def generate_data():
@@ -147,4 +175,4 @@ def generate_data():
     train_target = ((train_input[:,0]-0.5)**2 + (train_input[:,1]-0.5)**2) <= 1/(2*math.pi)
     test_target = ((test_input[:,0]-0.5)**2 + (test_input[:,1]-0.5)**2) <= 1/(2*math.pi)
     
-    return train_input, train_target, test_input, test_target
+    return train_input, train_target.int(), test_input, test_target.int()
