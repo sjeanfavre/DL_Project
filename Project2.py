@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 
 torch.set_grad_enabled(False)
 
+#seed the random number generator for reproducability
+torch.manual_seed(1)
 
 class Module(object):
    
@@ -53,22 +55,24 @@ class Linear(Module):
         self.gamma = gamma
         self.w = torch.empty(out_features, in_features).normal_()
         self.b = torch.empty(out_features, 1).normal_()
-
+        self.dl_dw = None
+        self.dl_db = None
+        
     def forward(self, x):
         #Save input for backprop
-        self.x = x    
+        self.x = x
         return torch.mm(self.w,x) + self.b
     
     def backward(self, dl_ds):
-        #Derivative of the loss w.r.t. the parameters
         
+        #Derivative of the loss w.r.t. the parameters
         self.dl_dw = torch.mm(dl_ds,self.x.T)
         self.dl_db = torch.sum(dl_ds,1).unsqueeze(1)   #Sum the gradients of the batch
         self.dl_dx = torch.mm(self.w.T,dl_ds)
+        
         #Parameters update
         self.w -= self.gamma*self.dl_dw
         self.b -= self.gamma*self.dl_db
-        
         return self.dl_dx
     
     def param(self):
@@ -80,7 +84,7 @@ class ReLU(Module):
 
     def forward(self, s):
         self.s = s
-        s[s>0] = 0
+        s[s<0] = 0
         return s
 
     def backward(self, dl_dx):
@@ -117,10 +121,13 @@ class Sequential(Module):
     
     def param(self):
         parameters = []
+        #print(self.structure[0])
+        #print(self.structure[0].param())
+        #print(self.structure[1])
+        #print(self.structure[1].param())
+        
         for layer in self.structure:
-            for parameter in layer.param():
-                print(len(layer.param()))
-                parameters.append(parameter)
+            parameters.append(layer.param())
         return parameters
             
 #Loss function
@@ -129,7 +136,7 @@ class LossMSE(object):
         # Computes the MSE loss of v and target t
         return torch.mean((v-t).pow(2))
     
-    def gradient(self, v, t):
+    def grad(self, v, t):
         # Computes the MSE loss gradient w.r.t. v
         return 2*(v-t)/v.numel()   
 
@@ -149,55 +156,53 @@ def generate_data():
 nb_epochs = 200
 epochs = range(nb_epochs)
 eta = 0.001
-gamma = 0
-batch_size = 25
+gamma = 1e-3
+batch_size = 20
 
 #Data generation
 train_input, train_target, test_input, test_target = generate_data()
 
-train_errors = []
-train_loss = []
-test_errors = []
-test_loss = []
 
 #Network
 model = Sequential([Linear(in_features = 2, out_features = 25),
-                    Tanh(),
+                    ReLU(),
                     Linear(in_features = 25, out_features = 25),
                     Tanh(),
                     Linear(in_features = 25, out_features = 25),
                     Tanh(),
-                    Linear(in_features = 25, out_features = 2),
-                    ReLU()])
+                    Linear(in_features = 25, out_features = 1)])
 
 criterion = LossMSE()
-loss = []
 
+train_error = []
+train_loss = []
+test_error = []
+test_loss = []
+
+error_before_training = criterion.loss(model.forward(train_input.T), train_target.T)
+print("error_before_training : ", error_before_training.item())
 for e in range(nb_epochs):  
 
     for b in range(0, train_input.size(0), batch_size):
         #Forward pass
         output = model.forward(train_input[b:b+batch_size].T)
         #Store loss
-        loss.append(criterion.loss(output, train_target[b:batch_size]))
+        train_error.append(criterion.loss(output, train_target[b:b+batch_size].T))
+        test_error.append(criterion.loss(output, test_target[b:b+batch_size].T))
         #Backpropagation
-        model.backward(criterion.gradient(output, train_target[b:batch_size]))
-        #Parameters update
-        for p in model.param():
-            p -= eta * p.grad
+        model.backward(criterion.grad(output, train_target[b:b+batch_size].T))
+        
+    print("Epoch {}".format(e+1),end='\r')
+    
+error_after_training = criterion.loss(model.forward(train_input.T), train_target.T)
+print("error_after_training : ", error_after_training.item())
+
+output_train = model.forward(train_input.T)
+train_loss = criterion.loss(output_train,train_target.T).item()
+print("TRAINING LOSS: ", train_loss)
+
+output_test = model.forward(test_input.T)
+test_loss = criterion.loss(output_test,test_input.T).item()
+print("TEST LOSS: ", test_loss)
     
     
-    
-    
-"""    
-#from lecture 5.2 SGD
-for e in range(nb_epochs):
-    model.zero_grad()
-    for b in range(0, train_input.size(0), batch_size):
-        output = model(train_input[b:b+batch_size])
-        loss = criterion(output, train_target[b:b+batch_size])
-        loss.backward()
-        with torch.no_grad():
-            for p in model.parameters():
-                p -= eta * p.grad
-"""
