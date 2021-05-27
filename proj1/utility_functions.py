@@ -77,11 +77,22 @@ def train_and_test(model_n, mini_batch_size, nb_epochs, nb_hidden, nb_h1, nb_h4,
     train_time = torch.zeros((nb_rounds))
     loss = torch.zeros((nb_rounds, nb_epochs))
     a_l = False
+    
+    # Load data
+    train_input, train_target, train_classes, test_input, test_target, test_classes = prologue.generate_pair_sets(nsamples)
 
-
-    for i in range(nb_rounds):
-        # Load data and model at each round to randomize 
-        train_input, train_target, train_classes, test_input, test_target, test_classes = prologue.generate_pair_sets(nsamples)
+    for i in range(nb_rounds): 
+        # Randomize data at each round
+        perm = torch.randperm(nsamples)
+        train_input = train_input[perm]
+        train_target = train_target[perm]
+        train_classes = train_classes[perm]
+        perm = torch.randperm(nsamples)
+        test_input = test_input[perm]
+        test_target = test_target[perm]
+        test_classes = test_classes[perm]
+        
+        # Load model at each round with randomized weights
         if model_n==0:
             model = ConvNet(nb_hidden)
         elif model_n==1:
