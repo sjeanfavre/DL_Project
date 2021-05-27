@@ -21,9 +21,9 @@ loss2 = torch.zeros((nvariations, nb_epochs2))       # MLP
 model_variations = ['Original', 'WS', 'AL', 'WS-AL']
 plots = False
 
+
 # Compare performance of the two architectures
 # ConvNet
-
 for model_n in range(nvariations):
     
     loss1[model_n] = train_and_test(model_n, mini_batch_size1, nb_epochs1, nb_hidden, None,
@@ -51,8 +51,6 @@ for model_n in range(nvariations):
             fig1_2.savefig('plots/convnet_loss_all.png')
                 
     
-
-print('Juste MLP avec batch size 25 (cross val maaf)')
 # MLP
 for model_n in range(nvariations):
     

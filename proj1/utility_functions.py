@@ -149,12 +149,18 @@ def cross_validation_nrounds(nrounds, k=10):
 
     train_err = torch.zeros((nmodels, nrounds, k))
     test_err = torch.zeros((nmodels, nrounds, k))
+    
+    train_input, train_target, train_classes, test_input, test_target, test_classes = prologue.generate_pair_sets(nsamples)
 
     idx = torch.arange(0,k)
 
     for l in range(nrounds):
-        # Load (randomized) data at each round
-        train_input, train_target, train_classes, test_input, test_target, test_classes = prologue.generate_pair_sets(nsamples)
+        # Randomize data at each round
+        perm = torch.randperm(nsamples)
+        train_input = train_input[perm]
+        train_target = train_target[perm]
+        train_classes = train_classes[perm]
+
         train_input = train_input.view(k, nsamples_red, 2, 14, 14)
         train_target = train_target.view(k, nsamples_red)
         
