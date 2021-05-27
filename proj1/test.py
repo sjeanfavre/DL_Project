@@ -6,7 +6,7 @@ from utility_functions import train_and_test
 
 
 mini_batch_size1 = 100                               # ConvNet
-mini_batch_size2 = 50                                # MLP
+mini_batch_size2 = 25                                # MLP
 nb_epochs1 = 50                                      # ConvNet
 nb_epochs2 = 25                                      # MLP
 nb_hidden = 10                                       # Hidden units last layer ConvNet
@@ -23,6 +23,7 @@ plots = False
 
 # Compare performance of the two architectures
 # ConvNet
+
 for model_n in range(nvariations):
     
     loss1[model_n] = train_and_test(model_n, mini_batch_size1, nb_epochs1, nb_hidden, None,
@@ -50,7 +51,8 @@ for model_n in range(nvariations):
             fig1_2.savefig('plots/convnet_loss_all.png')
                 
     
-    
+
+print('Juste MLP avec batch size 25 (cross val maaf)')
 # MLP
 for model_n in range(nvariations):
     
