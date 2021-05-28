@@ -204,5 +204,16 @@ print("TRAINING LOSS: ", train_loss)
 output_test = model.forward(test_input.T)
 test_loss = criterion.loss(output_test,test_input.T).item()
 print("TEST LOSS: ", test_loss)
-    
-    
+
+x_plot = []
+for i in epochs:
+    x_plot += 50*[i]
+
+
+plt.plot(x_plot, train_error)
+plt.plot(x_plot, test_error)
+plt.grid()
+plt.xlabel("Epochs",)
+plt.ylabel("Error",)
+plt.legend(['Test error', 'Training error'])
+plt.show()
