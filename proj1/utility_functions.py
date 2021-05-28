@@ -157,9 +157,8 @@ def cross_validation_nrounds(nrounds, k=10):
     for l in range(nrounds):
         # Randomize data at each round
         perm = torch.randperm(nsamples)
-        train_input = train_input[perm]
-        train_target = train_target[perm]
-        train_classes = train_classes[perm]
+        train_input = train_input.view(nsamples, 2, 14, 14)[perm]
+        train_target = train_target.view(nsamples)[perm]
 
         train_input = train_input.view(k, nsamples_red, 2, 14, 14)
         train_target = train_target.view(k, nsamples_red)
